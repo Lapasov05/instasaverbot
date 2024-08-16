@@ -1,0 +1,19 @@
+[33mcommit 40a1293934c4d353a1416f8d92b9f973b0a3f933[m[33m ([m[1;36mHEAD -> [m[1;32mmaster[m[33m)[m
+Author: Abdugani <abdugani.lapasov2005@gmail.com>
+Date:   Fri Aug 16 15:23:41 2024 +0500
+
+    Initial commit
+
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex 0372b35..e181aa1 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -1,4 +1,5 @@[m
+ .idea[m
+ __pycache__[m
+ venv[m
+[31m-.env[m
+\ No newline at end of file[m
+[32m+[m[32m.env[m
+[32m+[m[32muravo.py[m
+\ No newline at end of file[m
