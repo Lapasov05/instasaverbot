@@ -1,0 +1,14 @@
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+DB_NAME = os.getenv('POSTGRES_NAME')
+DB_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+DB_PORT = os.getenv('POSTGRES_PORT')
+DB_HOST = os.getenv('POSTGRES_HOST')
+DB_USER = os.getenv('POSTGRES_USER')
+x_rapidapi_key = os.getenv('x-rapidapi-key')
+x_rapidapi_host = os.getenv('x-rapidapi-host')
+x_rapidapi_key_youtube = os.getenv('x-rapidapi-key_youtube')
+x_rapidapi_host_youtube = os.getenv('x-rapidapi-host_youtube')
+
