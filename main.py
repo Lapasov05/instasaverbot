@@ -1,8 +1,5 @@
 import os
 import logging
-from datetime import datetime
-from typing import Text
-
 from aiogram import Bot, Dispatcher, types
 import instaloader
 from aiogram.filters import CommandStart
@@ -14,7 +11,8 @@ from functions.state import SendAnnouncement
 from keyboard.keyboard import client_choice, share_with_friends, English_or_Uzbek, Admin_Button, all_users, \
     delete_keyboard, admin_choice
 
-API_TOKEN = os.getenv('API_TOKEN')
+API_TOKEN = "7388594042:AAESKhyq9nOt-zcH1m0W4bh"
+print(type(API_TOKEN))
 CHANNEL_ID = '@bonu_showroom_1'  # Replace with your channel ID
 
 # Define constants for languages
@@ -25,7 +23,11 @@ LANG_ENGLISH = 'english'
 user_languages = {}
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=API_TOKEN)
+print(f"API_TOKEN: {API_TOKEN}")  # This should print your token
+
+bot = Bot(API_TOKEN)
+
+bot = Bot(API_TOKEN)
 dp = Dispatcher()
 
 # Initialize Instaloader
@@ -306,7 +308,7 @@ async def show_users(callback_query: types.CallbackQuery):
         for idx, user in enumerate(users):
             username = user['username'] or "No Username"
             # Assuming user['created_date'] is already a datetime object
-            created_date = user['created_date'].strftime("%Y-%m-%d %H:%M:%S")
+            created_date = user['created_date']
             member_status = await bot.get_chat_member(CHANNEL_ID, user['user_id'])
             following = '✅ Following' if member_status.status != 'left' else '❌ Not Following'
 

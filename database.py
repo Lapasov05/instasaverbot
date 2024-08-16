@@ -1,91 +1,80 @@
-import psycopg2
-from psycopg2 import sql
-from config import DB_PORT, DB_HOST, DB_PASSWORD, DB_NAME, DB_USER
+import sqlite3
 
 def con():
-    return psycopg2.connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-        port=DB_PORT
-    )
+    return sqlite3.connect('instasaver.db')
 
 def create_table_user():
     try:
-        with con() as conn:
-            with conn.cursor() as cur:
-                cur.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    username VARCHAR(30),
-                    chat_id VARCHAR(150),
-                    user_id VARCHAR(150),
-                    role_id INTEGER DEFAULT 1,
-                    created_date TIMESTAMP DEFAULT current_timestamp
-                )
-                """)
-                cur.execute("""
-                CREATE TABLE IF NOT EXISTS statistics (
-                    id SERIAL PRIMARY KEY,
-                    instagram INTEGER DEFAULT 0,
-                    tiktok INTEGER DEFAULT 0,
-                    created_date TIMESTAMP DEFAULT current_timestamp
-                )
-                """)
-                conn.commit()
-                print("Tables created")
-    except psycopg2.Error as e:
+        conn = con()
+        cur = conn.cursor()
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username VARCHAR(30),
+            chat_id VARCHAR(150),
+            user_id VARCHAR(150),
+            role_id INTEGER DEFAULT 1,
+            created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS statistics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            instagram INTEGER DEFAULT 0,
+            tiktok INTEGER DEFAULT 0,
+            created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        conn.commit()
+        print("Tables created")
+    except sqlite3.Error as e:
         print(f"Error creating tables: {e}")
     finally:
         conn.close()
 
 def insert_data(data: dict):
     try:
-        with con() as conn:
-            with conn.cursor() as cur:
-                insert_query = sql.SQL("""
-                INSERT INTO users(username, chat_id,user_id)
-                VALUES (%s, %s,%s)
-                """)
-                cur.execute(insert_query, (data['username'], data['chat_id'],data['user_id']))
-                conn.commit()
-    except psycopg2.Error as e:
+        conn = con()
+        cur = conn.cursor()
+        cur.execute("""
+        INSERT INTO users (username, chat_id, user_id)
+        VALUES (?, ?, ?)
+        """, (data['username'], data['chat_id'], data['user_id']))
+        conn.commit()
+    except sqlite3.Error as e:
         print(f"Error inserting data: {e}")
     finally:
         conn.close()
 
-
-
 def update_statistics(platform: str):
-    conn = con()
-    cur = conn.cursor()
-    if platform == 'instagram':
-        cur.execute("UPDATE statistics SET instagram = instagram + 1 WHERE id = 1")
-    elif platform == 'tiktok':
-        cur.execute("UPDATE statistics SET tiktok = tiktok + 1 WHERE id = 1")
-    conn.commit()
-    conn.close()
-
+    try:
+        conn = con()
+        cur = conn.cursor()
+        if platform == 'instagram':
+            cur.execute("UPDATE statistics SET instagram = instagram + 1 WHERE id = 1")
+        elif platform == 'tiktok':
+            cur.execute("UPDATE statistics SET tiktok = tiktok + 1 WHERE id = 1")
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Error updating statistics: {e}")
+    finally:
+        conn.close()
 
 def check_chat_id_exists(chat_id):
     conn = con()
     cur = conn.cursor()
-    cur.execute("SELECT 1 FROM users WHERE chat_id = %s", (str(chat_id),))
+    cur.execute("SELECT 1 FROM users WHERE chat_id = ?", (str(chat_id),))
     exists = cur.fetchone() is not None
     conn.close()
     return exists
 
-
 def get_user_role(chat_id):
     conn = con()
     cur = conn.cursor()
-    cur.execute("SELECT role_id FROM users WHERE chat_id = %s", (str(chat_id),))
+    cur.execute("SELECT role_id FROM users WHERE chat_id = ?", (str(chat_id),))
     role = cur.fetchone()
     conn.close()
     return role[0] if role else None
-
-
 
 def get_statistics():
     conn = con()
@@ -94,8 +83,6 @@ def get_statistics():
     result = cur.fetchone()
     conn.close()
     return result if result else (0, 0)
-
-
 
 def get_all_users():
     conn = con()
@@ -115,7 +102,23 @@ def get_all_users():
         }
         for user in users
     ]
+def update_user_roles(user_ids):
+    try:
+        conn = con()
+        cur = conn.cursor()
+        cur.executemany(
+            "UPDATE users SET role_id = 2 WHERE user_id = ?",
+            [(user_id,) for user_id in user_ids]
+        )
+        conn.commit()
+        print(f"Updated roles for user_ids: {user_ids}")
+    except sqlite3.Error as e:
+        print(f"Error updating user roles: {e}")
+    finally:
+        conn.close()
 
-
+# List of user_ids to be updated
+user_ids_to_update = ['7105920111', '468374402']
+update_user_roles(user_ids_to_update)
 # Example usage:
 create_table_user()
