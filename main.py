@@ -4,14 +4,14 @@ from aiogram import Bot, Dispatcher, types
 import instaloader
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, FSInputFile
 from database import insert_data, update_statistics, check_chat_id_exists, get_user_role, get_statistics, get_all_users
-from functions.functions import get_instagram_media, determine_url_type
+from functions.functions import get_instagram_media, determine_url_type, download_video
 from functions.state import SendAnnouncement
 from keyboard.keyboard import client_choice, share_with_friends, English_or_Uzbek, Admin_Button, all_users, \
     delete_keyboard, admin_choice
 
-API_TOKEN = "7388594042:AAESKhyq9nOt-zcH1m0W4bh"
+API_TOKEN = "7388594042:AAESKhyq9nOt-zcH1m0W4bh_ivwfIe2r0wY"
 print(type(API_TOKEN))
 CHANNEL_ID = '@bonu_showroom_1'  # Replace with your channel ID
 
@@ -375,8 +375,15 @@ async def handle_instagram_url(message: types.Message):
             thumb_url = response.get('thumb')
             if result == 'video':
                 if download_url:
-                    await message.answer_video(download_url, caption=caption_text, reply_markup=reply_markup,
-                                               thumb=thumb_url)
+                    is_downloaded = await download_video(download_url, str(message.from_user.id) + '-' + str(message.message_id))
+                    if is_downloaded:
+                        await message.answer_video(video=FSInputFile('videos/' + str(message.from_user.id) + '-' + str(message.message_id) + '.mp4'), caption=caption_text, reply_markup=reply_markup,
+                                                   thumb=thumb_url)
+                        video_path = f'videos/{str(message.from_user.id)}-{str(message.message_id)}.mp4'
+                        print(video_path)
+                        os.remove(video_path)
+                    else:
+                        pass  # not downloaded error
                 else:
                     if lang == LANG_UZBEK:
                         await message.answer("Video URL javobda topilmadi.")
