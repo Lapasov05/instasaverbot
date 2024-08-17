@@ -409,7 +409,7 @@ async def handle_instagram_url(message: types.Message):
         await loading_message.delete()  # Delete the loading message after the final response
 
     except Exception as e:
-        logging.error(e)
+        print("Error:",e)
         if lang == LANG_UZBEK:
             await message.answer(
                 "Video yoki rasmni yuklab olishda xatolik. Iltimos, URLni tekshiring va qayta urinib ko'ring.")

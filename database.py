@@ -3,10 +3,13 @@ import sqlite3
 def con():
     return sqlite3.connect('instasaver.db')
 
+
 def create_table_user():
     try:
         conn = con()
         cur = conn.cursor()
+
+        # Create the users table if it doesn't exist
         cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,6 +20,8 @@ def create_table_user():
             created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+
+        # Create the statistics table if it doesn't exist
         cur.execute("""
         CREATE TABLE IF NOT EXISTS statistics (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,12 +30,25 @@ def create_table_user():
             created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+
+        # Check if a row with id = 1 already exists
+        cur.execute("SELECT id FROM statistics WHERE id = 1")
+        if cur.fetchone() is None:
+            # Insert the initial row if it doesn't exist
+            cur.execute("""
+            INSERT INTO statistics (instagram, tiktok) 
+            VALUES (0, 0)
+            """)
+
         conn.commit()
         print("Tables created")
+
     except sqlite3.Error as e:
         print(f"Error creating tables: {e}")
+
     finally:
         conn.close()
+
 
 def insert_data(data: dict):
     try:
