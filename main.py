@@ -11,7 +11,7 @@ from functions.state import SendAnnouncement
 from keyboard.keyboard import client_choice, share_with_friends, English_or_Uzbek, Admin_Button, all_users, \
     delete_keyboard, admin_choice
 
-API_TOKEN = "7388594042:AAESKhyq9nOt-zcH1m0W4bh_ivwfIe2r0wY"
+API_TOKEN = "7388594042:AAESKhyq9nOt-zcH1m0W4bh"
 print(type(API_TOKEN))
 CHANNEL_ID = '@bonu_showroom_1'  # Replace with your channel ID
 
