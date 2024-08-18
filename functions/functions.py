@@ -14,7 +14,7 @@ def determine_url_type(url):
 
 
 def get_instagram_media(url):
-    api_key = "024a509a11a3c90b229edb7052ed4fe5"
+    api_key = "024a509a11a3c90b"
     print(api_key)
 
     base_url = "https://apishop.uz/apikey.php"
