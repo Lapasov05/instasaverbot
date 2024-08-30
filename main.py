@@ -1,3 +1,4 @@
+import asyncio
 import os
 import logging
 from aiogram import Bot, Dispatcher, types
@@ -5,15 +6,17 @@ import instaloader
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile
+
+from config import API_TOKEN, CHANNEL_ID
 from database import insert_data, update_statistics, check_chat_id_exists, get_user_role, get_statistics, get_all_users
-from functions.functions import get_instagram_media, determine_url_type, download_video
+from functions.functions import get_instagram_media, determine_url_type, download_video, fetch_channel_info, get_video_size
 from functions.state import SendAnnouncement
 from keyboard.keyboard import client_choice, share_with_friends, English_or_Uzbek, Admin_Button, all_users, \
     delete_keyboard, admin_choice
 
-API_TOKEN = "7388594042:AAESKhyq9nOt-zcH1m0W4bh"
+# API_TOKEN = "7451078333:AAFSbRXoMGw0HWbYvZ3wLx5abE6ucr5FQPw"
 print(type(API_TOKEN))
-CHANNEL_ID = '@bonu_showroom_1'  # Replace with your channel ID
+# CHANNEL_ID = '@english_movies_by_code'  # Replace with your channel ID
 
 # Define constants for languages
 LANG_UZBEK = 'uzbek'
@@ -27,7 +30,7 @@ print(f"API_TOKEN: {API_TOKEN}")  # This should print your token
 
 bot = Bot(API_TOKEN)
 
-bot = Bot(API_TOKEN)
+# bot = Bot(API_TOKEN)
 dp = Dispatcher()
 
 # Initialize Instaloader
@@ -73,13 +76,13 @@ async def select_uzbek(callback_query: CallbackQuery):
         await callback_query.message.delete()
     if member_status.status == 'member':
         await callback_query.message.answer(f"""Botga Xush kelibsiz! 
-        Bizning xizmatlar
+    Bizning xizmatlar
 
-        📲 Instagram
+    📲 Instagram
 
-        📲  Tiktok  
-
-        ⌛️  url (Havolani)   jo'nating   va  siz  qisqa  vaqt  ichida   videoni   qabul  qiling""")
+    📲  Tiktok  
+    
+    ⌛️  url (Havolani)   jo'nating   va  siz  qisqa  vaqt  ichida   videoni   qabul  qiling""")
         await callback_query.message.delete()
 
 
@@ -95,13 +98,13 @@ async def select_english(callback_query: CallbackQuery):
         await callback_query.message.delete()
     if member_status.status == 'member':
         await callback_query.message.answer(f"""Welcome to our bot! 
-        Our services:
+    Our services:
 
-        📲 Instagram
+    📲 Instagram
 
-        📲  Tiktok  
+    📲  Tiktok  
 
-        ⌛️ Send the URL and receive the video shortly""")
+    ⌛️ Send the URL and receive the video shortly""")
         await callback_query.message.delete()
 
 
@@ -163,6 +166,33 @@ async def help_command(message: types.Message):
 
 
 
+@dp.message(lambda msg: msg.text == "🎥My channel🎥")
+async def my_channel(message: types.Message, state: FSMContext):
+    try:
+        # Fetch and update channel info
+        channel_info = await fetch_channel_info()
+
+        title = channel_info.get('title', 'Unknown')
+        username = channel_info.get('username', 'Unknown')
+        invite_link = channel_info.get('invite_link', 'No invite link')
+        photo_file_id = channel_info.get('photo', 'No photo')
+
+        # Send channel info to the user
+        response_text = (
+            f"📊 Channel Information:\n"
+            f"Title: {title}\n"
+            f"Username: {username}\n"
+            # f"Invite link: {invite_link}\n"
+        )
+
+
+        await message.answer(response_text)
+
+    except Exception as e:
+        logging.error(f"An error occurred while fetching channel information: {e}")
+        await message.answer(f"An error occurred while fetching channel information: {e}")
+
+
 @dp.message(lambda msg: msg.text == "📤Send Announcement📤")
 async def send_announcement(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
@@ -173,6 +203,8 @@ async def send_announcement(message: types.Message, state: FSMContext):
     else:
         await message.answer("📨Xabarni jo'nating: ")
         await state.set_state(SendAnnouncement.announcement)
+
+
 
 
 @dp.message(SendAnnouncement.announcement)
@@ -375,7 +407,14 @@ async def handle_instagram_url(message: types.Message):
             thumb_url = response.get('thumb')
             if result == 'video':
                 if download_url:
-                    is_downloaded = await download_video(download_url, str(message.from_user.id) + '-' + str(message.message_id))
+                    video_size = await get_video_size(download_url)
+                    print(video_size)
+                    if video_size < 20971520:
+                        print("20 mb kam")
+                        await message.answer_video(video=download_url,caption=caption_text,thumb=thumb_url)
+                        return
+                    else:
+                        is_downloaded = await download_video(download_url, str(message.from_user.id) + '-' + str(message.message_id))
                     if is_downloaded:
                         await message.answer_video(video=FSInputFile('videos/' + str(message.from_user.id) + '-' + str(message.message_id) + '.mp4'), caption=caption_text, reply_markup=reply_markup,
                                                    thumb=thumb_url)

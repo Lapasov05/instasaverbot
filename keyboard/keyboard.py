@@ -30,7 +30,8 @@ def Admin_Button():
     statistics_btn=KeyboardButton(text="📊Show statiscs📊")
     users_list_btn=KeyboardButton(text="👥Show Users👥")
     send_announcement=KeyboardButton(text="📤Send Announcement📤")
-    reply_markup=ReplyKeyboardMarkup(keyboard=[[statistics_btn,users_list_btn],[send_announcement]],resize_keyboard=True,one_time_keyboard=True)
+    my_channel=KeyboardButton(text="🎥My channel🎥")
+    reply_markup=ReplyKeyboardMarkup(keyboard=[[statistics_btn,users_list_btn],[send_announcement,my_channel]],resize_keyboard=True,one_time_keyboard=True)
     return reply_markup
 
 
