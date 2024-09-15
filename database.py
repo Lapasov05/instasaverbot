@@ -30,6 +30,13 @@ def create_table_user():
             created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS videos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_id TEXT,
+            shortcode TEXT UNIQUE
+        )
+        """)
 
         # Check if a row with id = 1 already exists
         cur.execute("SELECT id FROM statistics WHERE id = 1")
@@ -135,8 +142,45 @@ def update_user_roles(user_ids):
     finally:
         conn.close()
 
+
+def add_video(file_id, shortcode):
+    try:
+        conn = con()
+        cur = conn.cursor()
+        cur.execute("""
+        INSERT INTO videos (file_id, shortcode)
+        VALUES (?, ?)
+        """, (file_id, shortcode))
+
+        # Commit the transaction
+        conn.commit()
+        print("Video added successfully!")
+
+    except sqlite3.IntegrityError:
+        print("Error: The shortcode must be unique.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+# Check if the shortcode exists and return the file_id if it does
+def check_shortcode_exists(shortcode):
+    conn = con()
+    cur = conn.cursor()
+    cur.execute("""
+    SELECT file_id FROM videos WHERE shortcode = ?
+    """, (shortcode,))
+
+    result = cur.fetchone()
+
+    if result:
+        return result[0]  # Return file_id if shortcode exists
+    else:
+        return None  # Shortcode does not exist
+
 # List of user_ids to be updated
 user_ids_to_update = ['7105920111', '468374402']
 update_user_roles(user_ids_to_update)
 # Example usage:
 create_table_user()
+
+

@@ -5,15 +5,19 @@ import instaloader
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile
-from database import insert_data, update_statistics, check_chat_id_exists, get_user_role, get_statistics, get_all_users
-from functions.functions import get_instagram_media, determine_url_type, download_video
+from database import insert_data, update_statistics, check_chat_id_exists, get_user_role, get_statistics, get_all_users, \
+    check_shortcode_exists, add_video
+from functions.functions import get_instagram_media, determine_url_type, download_video, get_video_size
 from functions.state import SendAnnouncement
 from keyboard.keyboard import client_choice, share_with_friends, English_or_Uzbek, Admin_Button, all_users, \
     delete_keyboard, admin_choice
 
 API_TOKEN = "7388594042:AAESKhyq9nOt-zcH1m0W4bh_ivwfIe2r0wY"
-print(type(API_TOKEN))
+# print(type(API_TOKEN))
 CHANNEL_ID = '@bonu_showroom_1'  # Replace with your channel ID
+
+
+MAX_VIDEO_SIZE = 20 * 1024 * 1024  # 20 MB in bytes
 
 # Define constants for languages
 LANG_UZBEK = 'uzbek'
@@ -345,86 +349,120 @@ async def delete_messages(callback_query: types.CallbackQuery):
 async def handle_instagram_url(message: types.Message):
     user_id = message.from_user.id
     lang = get_language(user_id)
-    member_status = await bot.get_chat_member(CHANNEL_ID, user_id)
-
-    if member_status.status == 'left':
-        if lang == LANG_UZBEK:
-            await message.answer(f"Iltimos, botimizdan foydalanishdan oldin {CHANNEL_ID} kanaliga obuna bo'ling.")
-        else:
-            await message.answer(f"Please follow our channel {CHANNEL_ID} first to use this bot.")
-        return
 
     try:
+        member_status = await bot.get_chat_member(CHANNEL_ID, user_id)
+        if member_status.status == 'left':
+            await message.answer(
+                f"Iltimos, botimizdan foydalanishdan oldin {CHANNEL_ID} kanaliga obuna bo'ling."
+                if lang == LANG_UZBEK
+                else f"Please follow our channel {CHANNEL_ID} first to use this bot."
+            )
+            return
+
         url = message.text.strip()
         loading_message = await message.answer("⌛️")  # Store the loading message
-        print("url keldi")
         url_type = determine_url_type(url)
         reply_markup = share_with_friends()
-        caption_text = "📥@Insta_Save_Video_bot orqali yuklab olindi" if lang == LANG_UZBEK else "📥Downloaded via @Insta_Save_Video_bot"
+        caption_text = "📥@instatik_saverbot orqali yuklab olindi" if lang == LANG_UZBEK else "📥Downloaded via @instatik_saverbot"
 
-        if url_type == "instagram":
-            print("instagram")
-            update_statistics('instagram')
-        elif url_type == "tiktok":
-            print("tiktok")
-            update_statistics("tiktok")
+        if url_type not in ["instagram", "tiktok"]:
+            await message.answer(
+                "Qo'llab-quvvatlanmaydigan media turi." if lang == LANG_UZBEK else "Unsupported media type."
+            )
+            await loading_message.delete()
+            return
+
+        update_statistics(url_type)
         response = get_instagram_media(url)
+
         if 'download_url' in response:
             result = response['type']
             download_url = response.get('download_url')
             thumb_url = response.get('thumb')
+            video_caption = response.get('caption', '')
+            shortcode = response.get('shortcode')
+
             if result == 'video':
-                if download_url:
-                    is_downloaded = await download_video(download_url, str(message.from_user.id) + '-' + str(message.message_id))
-                    if is_downloaded:
-                        await message.answer_video(video=FSInputFile('videos/' + str(message.from_user.id) + '-' + str(message.message_id) + '.mp4'), caption=caption_text, reply_markup=reply_markup,
-                                                   thumb=thumb_url)
-                        video_path = f'videos/{str(message.from_user.id)}-{str(message.message_id)}.mp4'
-                        print(video_path)
-                        os.remove(video_path)
-                    else:
-                        pass  # not downloaded error
+                file_id = check_shortcode_exists(shortcode)
+                if file_id:
+                    # Send existing video by file_id
+                    await message.answer_video(
+                        video=file_id,
+                        caption=caption_text,
+                        reply_markup=reply_markup,
+                        thumb=thumb_url
+                    )
                 else:
-                    if lang == LANG_UZBEK:
-                        await message.answer("Video URL javobda topilmadi.")
+                    video_size = await get_video_size(download_url)
+                    video_filename = f'videos/{user_id}-{message.message_id}.mp4'
+
+                    if video_size > MAX_VIDEO_SIZE:
+                        if await download_video(download_url, video_filename):
+                            sent_message = await message.answer_video(
+                                video=FSInputFile(video_filename),
+                                caption=f"{caption_text}\n",
+                                reply_markup=reply_markup,
+                                thumb=thumb_url
+                            )
+                            file_id = sent_message.video.file_id
+                            add_video(file_id, shortcode)
+                            os.remove(video_filename)
+                        else:
+                            await message.answer("Video download failed.")
                     else:
-                        await message.answer("Video URL not found in the response.")
+                        sent_message = await message.answer_video(
+                            video=download_url,
+                            caption=f"{caption_text}\n",
+                            reply_markup=reply_markup,
+                            thumb=thumb_url
+                        )
+                        file_id = sent_message.video.file_id
+                        add_video(file_id, shortcode)
+
             elif result == 'image':
                 if download_url:
-                    await message.answer_photo(download_url, caption=caption_text, reply_markup=reply_markup)
+                    await message.answer_photo(
+                        photo=download_url,
+                        caption=caption_text,
+                        reply_markup=reply_markup
+                    )
                 else:
-                    if lang == LANG_UZBEK:
-                        await message.answer("Rasm URL javobda topilmadi.")
-                    else:
-                        await message.answer("Image URL not found in the response.")
-        elif "medias" in response:
-            for media in response['medias']:
-                if media['type'] == "image":
-                    await message.answer_photo(media['download_url'], caption=caption_text, reply_markup=reply_markup)
-                await message.answer_video(media['download_url'], caption=caption_text, reply_markup=reply_markup)
-            else:
-                if lang == LANG_UZBEK:
-                    await message.answer("Qo'llab-quvvatlanmaydigan media turi.")
-                else:
-                    await message.answer("Unsupported media type.")
-        else:
-            if lang == LANG_UZBEK:
-                await message.answer("Video yuklab olish vositasidan noto'g'ri javob.")
-            else:
-                await message.answer("Invalid response from the video downloader.")
+                    await message.answer(
+                        "Rasm URL javobda topilmadi." if lang == LANG_UZBEK else "Image URL not found in the response."
+                    )
 
-        await loading_message.delete()  # Delete the loading message after the final response
+            elif "medias" in response:
+                for media in response['medias']:
+                    if media['type'] == "image":
+                        await message.answer_photo(
+                            photo=media['download_url'],
+                            caption=caption_text,
+                            reply_markup=reply_markup
+                        )
+                    else:
+                        await message.answer_video(
+                            video=media['download_url'],
+                            caption=caption_text,
+                            reply_markup=reply_markup
+                        )
+            else:
+                await message.answer(
+                    "Video yuklab olish vositasidan noto'g'ri javob." if lang == LANG_UZBEK else "Invalid response from the video downloader."
+                )
+
+        else:
+            await message.answer(
+                "Video URL javobda topilmadi." if lang == LANG_UZBEK else "Video URL not found in the response."
+            )
 
     except Exception as e:
-        print("Error:",e)
-        if lang == LANG_UZBEK:
-            await message.answer(
-                "Video yoki rasmni yuklab olishda xatolik. Iltimos, URLni tekshiring va qayta urinib ko'ring.")
-        else:
-            await message.answer("Failed to download the video or image. Please check the URL and try again.")
-
-        await loading_message.delete()  # Delete the loading message in case of an error
-
+        print("Error:", e)
+        await message.answer(
+            "Video yoki rasmni yuklab olishda xatolik. Iltimos, URLni tekshiring va qayta urinib ko'ring." if lang == LANG_UZBEK else "Failed to download the video or image. Please check the URL and try again."
+        )
+    finally:
+        await loading_message.delete()  # Ensure the loading message is deleted in any case
 
 
 

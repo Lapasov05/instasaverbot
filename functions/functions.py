@@ -14,8 +14,9 @@ def determine_url_type(url):
 
 
 def get_instagram_media(url):
-    api_key = "024a509a11a3c90b229edb7052ed4fe5"
-    print(api_key)
+    # api_key = "024a509a11a3c90b229edb7052ed4fe5"
+    api_key = "ddd589012f161808afc7bd6d6a004761"
+    # print(api_key)
 
     base_url = "https://apishop.uz/apikey.php"
     params = {
@@ -27,10 +28,10 @@ def get_instagram_media(url):
     try:
         response = requests.get(base_url, params=params)
         # response.raise_for_status()
-        print(response.json())
+        # print(response.json())
         return response.json()
     except requests.RequestException as e:
-        print(f"Xato yuz berdi: {e}")
+        # print(f"Xato yuz berdi: {e}")
         return None
 
 
@@ -47,3 +48,14 @@ async def download_video(video_link: str, destination: str):
         print(e)
 
     return False
+
+
+async def get_video_size(download_url):
+    async with aiohttp.ClientSession() as session:
+        async with session.head(download_url) as resp:
+            if resp.status == 200:
+                return int(resp.headers.get('Content-Length', 0))
+            return 0
+
+
+
