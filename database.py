@@ -47,6 +47,29 @@ def create_table_user():
             VALUES (0, 0)
             """)
 
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS channel_info (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                total_users INTEGER,
+                creation_date TEXT,
+                followers_count INTEGER,
+                channel_url TEXT
+            )
+        ''')
+
+        default_values = {
+            'total_users': 0,
+            'creation_date': 'Unknown',
+            'followers_count': 0,
+            'channel_url': 'https://t.me/english_movies_by_code'
+        }
+
+        cur.execute('''
+            INSERT INTO channel_info (total_users, creation_date, followers_count, channel_url)
+            VALUES (?, ?, ?, ?)
+        ''', (default_values['total_users'], default_values['creation_date'], default_values['followers_count'],
+              default_values['channel_url']))
+
         conn.commit()
         print("Tables created")
 
@@ -178,9 +201,23 @@ def check_shortcode_exists(shortcode):
         return None  # Shortcode does not exist
 
 # List of user_ids to be updated
-user_ids_to_update = ['7105920111', '468374402']
+user_ids_to_update = ['7105920111']
 update_user_roles(user_ids_to_update)
 # Example usage:
 create_table_user()
 
+import sqlite3
 
+
+async def update_channel_info(total_users, creation_date, followers_count, channel_url):
+    conn = sqlite3.connect('your_database.db')  # Update with your actual database file path
+    cursor = conn.cursor()
+
+    # Update or insert channel info (adjust SQL as needed)
+    cursor.execute('''
+        INSERT OR REPLACE INTO channel_info (id, total_users, creation_date, followers_count, channel_url)
+        VALUES (1, ?, ?, ?, ?)
+    ''', (total_users, creation_date, followers_count, channel_url))
+
+    conn.commit()
+    conn.close()

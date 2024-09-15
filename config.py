@@ -11,4 +11,5 @@ x_rapidapi_key = os.getenv('x-rapidapi-key')
 x_rapidapi_host = os.getenv('x-rapidapi-host')
 x_rapidapi_key_youtube = os.getenv('x-rapidapi-key_youtube')
 x_rapidapi_host_youtube = os.getenv('x-rapidapi-host_youtube')
-
+API_TOKEN = "7451078333:AAECJ8rwqwbFpEOiNsTCSnThQfsknaNlgVk"
+CHANNEL_ID = '@english_movies_by_code'  # Replace with your channel ID
