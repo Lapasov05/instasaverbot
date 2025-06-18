@@ -11,7 +11,7 @@ def client_choice():
 def share_with_friends():
     share_btn = InlineKeyboardButton(
         text="Share with Friends",
-        url="https://t.me/share/url?url=https://t.me/Insta_Save_Video_bot&text=Biz%20bilan%20oson%20yuklang"
+        url="https://t.me/share/url?url=https://t.me/instatik_saverbot&text=Biz%20bilan%20oson%20yuklang"
     )
     reply_markup = InlineKeyboardMarkup(inline_keyboard=[[share_btn]])
     return reply_markup

@@ -1,3 +1,4 @@
+
 import logging
 import os
 from aiogram import Bot, Dispatcher, types, F
@@ -5,7 +6,9 @@ import instaloader
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, FSInputFile, InputMediaVideo, InputMediaPhoto
+
+from aiogram.types import CallbackQuery, FSInputFile
+from database import check_shortcode_exists
 from config import API_TOKEN, CHANNEL_ID
 from database import insert_data, update_statistics, check_chat_id_exists, get_user_role, get_statistics, get_all_users
 from functions.functions import get_instagram_media, determine_url_type, download_video, fetch_channel_info, \
@@ -15,9 +18,15 @@ from functions.state import SendAnnouncement
 from keyboard.keyboard import client_choice, share_with_friends, English_or_Uzbek, Admin_Button, all_users, \
     delete_keyboard, admin_choice
 
+API_TOKEN = "7388594042:AAESKhyq9nOt-zcH1m0W4bh_ivwfIe2r0wY"
+# print(type(API_TOKEN))
+CHANNEL_ID = '@bonu_showroom_1'  # Replace with your channel ID
 # API_TOKEN = "7451078333:AAFSbRXoMGw0HWbYvZ3wLx5abE6ucr5FQPw"
 # print(type(API_TOKEN))
 # CHANNEL_ID = '@english_movies_by_code'  # Replace with your channel ID
+
+
+MAX_VIDEO_SIZE = 20 * 1024 * 1024  # 20 MB in bytes
 
 # Define constants for languages
 LANG_UZBEK = 'uzbek'
@@ -36,7 +45,11 @@ dp = Dispatcher()
 
 L = instaloader.Instaloader()
 
+import sys
+import asyncio
 
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 def get_language(user_id):
     return user_languages.get(user_id, LANG_ENGLISH)  # Default to English if not set
 
@@ -346,6 +359,15 @@ async def handle_instagram_url(message: types.Message):
     lang = get_language(user_id)
 
     try:
+        member_status = await bot.get_chat_member(CHANNEL_ID, user_id)
+        if member_status.status == 'left':
+            await message.answer(
+                f"Iltimos, botimizdan foydalanishdan oldin {CHANNEL_ID} kanaliga obuna bo'ling."
+                if lang == LANG_UZBEK
+                else f"Please follow our channel {CHANNEL_ID} first to use this bot."
+            )
+            return
+
         url = message.text.strip()
         loading_message = await message.answer("⌛️")  # Loading message
         url_type = determine_url_type(url)
@@ -372,6 +394,39 @@ async def handle_instagram_url(message: types.Message):
                 caption = response.get('caption')
 
                 if media_type == 'video' and download_url:
+                    loading_message = await message.answer("⌛️")  # Store the loading message
+                    url_type = determine_url_type(url)
+                    reply_markup = share_with_friends()
+                    caption_text = "📥@instatik_saverbot orqali yuklab olindi" if lang == LANG_UZBEK else "📥Downloaded via @instatik_saverbot"
+
+                    if url_type not in ["instagram", "tiktok"]:
+                        await message.answer(
+                            "Qo'llab-quvvatlanmaydigan media turi." if lang == LANG_UZBEK else "Unsupported media type."
+                        )
+                        await loading_message.delete()
+                        return
+
+                    update_statistics(url_type)
+                    response = get_instagram_media(url)
+
+        if 'download_url' in response:
+            result = response['type']
+            download_url = response.get('download_url')
+            thumb_url = response.get('thumb')
+            video_caption = response.get('caption', '')
+            shortcode = response.get('shortcode')
+
+            if result == 'video':
+                file_id = check_shortcode_exists(shortcode)
+                if file_id:
+                    # Send existing video by file_id
+                    await message.answer_video(
+                        video=file_id,
+                        caption=caption_text,
+                        reply_markup=reply_markup,
+                        thumb=thumb_url
+                    )
+                if download_url:
                     video_size = await get_video_size(download_url)
                     print(video_size)
                     if video_size is None or video_size < 20971520:
@@ -485,7 +540,7 @@ async def handle_instagram_url(message: types.Message):
 
     try:
         url = message.text.strip()
-        loading_message = await message.answer("⌛️")  # Loading message
+        loading_message = await message.answer("⌛️")
         url_type = determine_url_type(url)
         reply_markup = share_with_friends()
         caption_text = (
@@ -493,7 +548,6 @@ async def handle_instagram_url(message: types.Message):
             else "📥Downloaded via @Insta_Save_Video_bot"
         )
 
-        # Update statistics
         if url_type in ["instagram", "tiktok"]:
             update_statistics(url_type)
 
@@ -503,7 +557,7 @@ async def handle_instagram_url(message: types.Message):
             await send_and_cleanup(message, message.answer, loading_message, error_text)
             return
 
-        # Single media handling
+        # --- SINGLE MEDIA HANDLING ---
         if 'download_url' in response:
             media_type = response['type']
             download_url = response.get('download_url')
@@ -512,28 +566,10 @@ async def handle_instagram_url(message: types.Message):
 
             if media_type == 'video' and download_url:
                 video_size = await get_video_size(download_url)
-                print(video_size)
-                if video_size is None or video_size < 20971520:
-                    print("hello video")
+                if video_size is None or video_size < 20971520:  # < 20MB
                     await send_and_cleanup(
                         message, message.answer_video, loading_message,
                         video=download_url, caption=f"{caption} \n{caption_text}", thumb=thumb_url
-                    )
-                elif video_size >= 20480:
-                    filename = f'videos/{user_id}-{message.message_id}.mp4'
-                    print(filename)
-                    if await download_video(download_url, filename):
-                        await send_and_cleanup(
-                            message, message.answer_video, loading_message,
-                            video=FSInputFile(filename), caption=caption_text, reply_markup=reply_markup,
-                            thumb=thumb_url
-                        )
-                        os.remove(filename)
-                elif video_size is None or video_size < 20971520:
-                    print("hello video")
-                    await send_and_cleanup(
-                        message, message.answer_video, loading_message,
-                        video=download_url, caption=caption_text, thumb=thumb_url
                     )
                 else:
                     filename = f'videos/{user_id}-{message.message_id}.mp4'
@@ -545,10 +581,9 @@ async def handle_instagram_url(message: types.Message):
                         )
                         os.remove(filename)
                     else:
-                        await send_and_cleanup(
-                            message, message.answer, loading_message,
-                            "Video yuklab olishda xatolik yuz berdi." if lang == LANG_UZBEK else "Failed to download the video."
-                        )
+                        error_text = "Video yuklab olishda xatolik yuz berdi." if lang == LANG_UZBEK else "Failed to download the video."
+                        await send_and_cleanup(message, message.answer, loading_message, error_text)
+
             elif media_type == 'image' and download_url:
                 await send_and_cleanup(
                     message, message.answer_photo, loading_message,
@@ -558,29 +593,25 @@ async def handle_instagram_url(message: types.Message):
                 error_text = "Qo'llab-quvvatlanmaydigan media turi." if lang == LANG_UZBEK else "Unsupported media type."
                 await send_and_cleanup(message, message.answer, loading_message, error_text)
 
-        # Multiple media handling
-        # Multiple media handling
+        # --- MULTIPLE MEDIA HANDLING ---
         elif 'medias' in response:
             from aiogram.types import InputMediaPhoto
 
-            # Extract media from response
             media_group = []
-            caption = response['caption'] + "\n\n@Insta_Save_Video_bot orqali yuklab olindi"
+            caption = response['caption'] + "\n\n" + caption_text
 
-            # Add images to media group
             for idx, media in enumerate(response['medias']):
-                # print(media)
                 if media['type'] == 'image':
-                    if idx == 0:  # Add caption only to the first image
+                    if idx == 0:
                         media_group.append(InputMediaPhoto(media=media['download_url'], caption=caption))
                     else:
                         media_group.append(InputMediaPhoto(media=media['download_url']))
+                # Agar video ham bo‘lsa, bu yerga InputMediaVideo bilan qo‘shishingiz mumkin
 
-            # Send media group
             await message.answer_media_group(media_group)
 
         else:
-            error_text = "Video yuklab olish vositasidan noto'g'ri javob." if lang == LANG_UZBEK else "Invalid response from the video downloader."
+            error_text = "Video yoki rasm topilmadi." if lang == LANG_UZBEK else "Video or image not found in response."
             await send_and_cleanup(message, message.answer, loading_message, error_text)
 
     except Exception as e:
@@ -591,6 +622,9 @@ async def handle_instagram_url(message: types.Message):
             "Failed to download the video or image. Please check the URL and try again."
         )
         await send_and_cleanup(message, message.answer, loading_message, error_text)
+
+    finally:
+        await loading_message.delete()
 
 
 # @dp.message()
