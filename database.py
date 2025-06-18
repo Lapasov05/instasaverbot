@@ -25,8 +25,8 @@ def create_table_user():
         cur.execute("""
         CREATE TABLE IF NOT EXISTS statistics (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            instagram INTEGER DEFAULT 0,
-            tiktok INTEGER DEFAULT 0,
+            platform_name VARCHAR(150),
+            count INTEGER DEFAULT 0,
             created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -91,16 +91,23 @@ def update_statistics(platform: str):
     try:
         conn = con()
         cur = conn.cursor()
-        if platform == 'instagram':
-            cur.execute("UPDATE statistics SET instagram = instagram + 1 WHERE id = 1")
-        elif platform == 'tiktok':
-            cur.execute("UPDATE statistics SET tiktok = tiktok + 1 WHERE id = 1")
+
+        # Check if the platform already exists in the table
+        cur.execute("SELECT count FROM statistics WHERE platform_name = ?", (platform,))
+        row = cur.fetchone()
+
+        if row:
+            # Platform exists, update the count
+            cur.execute("UPDATE statistics SET count = count + 1 WHERE platform_name = ?", (platform,))
+        else:
+            # Platform does not exist, insert new row
+            cur.execute("INSERT INTO statistics (platform_name, count) VALUES (?, 1)", (platform,))
+
         conn.commit()
     except sqlite3.Error as e:
         print(f"Error updating statistics: {e}")
     finally:
         conn.close()
-
 def check_chat_id_exists(chat_id):
     conn = con()
     cur = conn.cursor()

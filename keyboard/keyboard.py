@@ -2,7 +2,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardBu
 
 
 def client_choice():
-    confirm_btn=InlineKeyboardButton(text="Kanalimiz 🎥",callback_data="english_movies",url="https://t.me/bonu_showroom_1")
+    confirm_btn=InlineKeyboardButton(text="Kanalimiz 🎥",callback_data="english_movies",url="https://t.me/english_movies_by_code")
     check=InlineKeyboardButton(text="♻Tekshirish♻️",callback_data="check")
     reply_markup=InlineKeyboardMarkup(inline_keyboard=[[confirm_btn],[check]])
     return reply_markup
